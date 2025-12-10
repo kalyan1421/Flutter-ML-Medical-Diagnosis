@@ -4,6 +4,11 @@ Streamlit Dashboard
 Run: streamlit run app/streamlit_app.py
 """
 
+import os
+
+# Prevent transformers from trying to import TensorFlow/Keras integration (Keras 3 incompat)
+os.environ["TRANSFORMERS_NO_TF"] = "1"
+
 import streamlit as st
 import tensorflow as tf
 from PIL import Image
@@ -11,7 +16,6 @@ import numpy as np
 import pickle
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-import os
 
 # Page config
 st.set_page_config(
@@ -60,17 +64,20 @@ st.markdown("""
 def load_models():
     """Load all trained models"""
     try:
-        # Check if models exist
-        if not os.path.exists('models/pneumonia_model.h5'):
-            st.error("❌ Pneumonia model not found! Please train it first.")
+        def validate_file(path, label):
+            if not os.path.exists(path):
+                st.error(f"❌ {label} not found at `{path}`. Please train or place the file.")
+                return False
+            if os.path.getsize(path) == 0:
+                st.error(f"❌ {label} at `{path}` is empty. Re-export or re-download the model.")
+                return False
+            return True
+
+        if not validate_file('models/pneumonia_model.h5', 'Pneumonia model'):
             return None, None, None, None
-        
-        if not os.path.exists('models/brain_tumor_model.h5'):
-            st.error("❌ Brain tumor model not found! Please train it first.")
+        if not validate_file('models/brain_tumor_model.h5', 'Brain tumor model'):
             return None, None, None, None
-        
-        if not os.path.exists('models/chatbot_data.pkl'):
-            st.error("❌ Chatbot data not found! Please train it first.")
+        if not validate_file('models/chatbot_data.pkl', 'Chatbot data'):
             return None, None, None, None
         
         # Load models
